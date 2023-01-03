@@ -17,6 +17,7 @@ func main() {
 	uc := controllers.NewUserController(getClient())
 	r.GET("/user/:id", uc.GetUser)
 	r.POST("/user", uc.CreateUser)
+	r.GET("/user", uc.GetUsers)
 	r.DELETE("/user/:id", uc.DeleteUser)
 	http.ListenAndServe("localhost:9000", r)
 }

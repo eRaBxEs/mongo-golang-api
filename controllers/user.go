@@ -21,10 +21,35 @@ func NewUserController(c *mongo.Client) *UserController {
 	return &UserController{c}
 }
 
+func (uc *UserController) GetUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	us := []models.User{}
+	ctx := context.TODO()
+	collection := uc.client.Database("testdb").Collection("users")
+	cur, err := collection.Find(ctx, bson.D{})
+	if err != nil {
+		w.WriteHeader(404)
+	}
+
+	if err = cur.All(ctx, us); err != nil {
+		fmt.Println(err)
+	}
+
+	uj, err := json.Marshal(us)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s\n", uj)
+
+}
+
 func (uc *UserController) GetUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	id := p.ByName("id")
 	if !primitive.IsValidObjectID(id) {
 		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
 	oid, err := primitive.ObjectIDFromHex(id)
@@ -39,6 +64,7 @@ func (uc *UserController) GetUser(w http.ResponseWriter, r *http.Request, p http
 	err = collection.FindOne(ctx, bson.M{"_id": oid}).Decode(&u)
 	if err != nil {
 		w.WriteHeader(404)
+		return
 	}
 
 	uj, err := json.Marshal(u)
@@ -61,8 +87,9 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request, _ h
 
 	ctx := context.TODO()
 	collection := uc.client.Database("testdb").Collection("users")
-	_, err := collection.InsertOne(ctx, u)
+	_, err := collection.InsertOne(ctx, &u)
 	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(404)
 	}
 
@@ -81,6 +108,7 @@ func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request, p h
 	id := p.ByName("id")
 	if !primitive.IsValidObjectID(id) {
 		w.WriteHeader(404)
+		return
 	}
 
 	oid, err := primitive.ObjectIDFromHex(id)
@@ -88,11 +116,12 @@ func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request, p h
 		fmt.Println(err)
 	}
 
-	collection := uc.client.Database("tedstdb").Collection("users")
+	collection := uc.client.Database("testdb").Collection("users")
 	ctx := context.TODO()
 	_, err = collection.DeleteOne(ctx, bson.M{"_id": oid})
 	if err != nil {
 		w.WriteHeader(404)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
